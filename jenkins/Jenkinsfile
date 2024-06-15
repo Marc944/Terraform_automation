@@ -1,0 +1,33 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Build') {
+            steps {
+                script {
+                    docker.build("${env.ACR_NAME}.azurecr.io/webapp:latest")
+                }
+            }
+        }
+        stage('Push') {
+            steps {
+                script {
+                    docker.withRegistry("https://${env.ACR_NAME}.azurecr.io", 'acrLogin') {
+                        docker.image("${env.ACR_NAME}.azurecr.io/webapp:latest").push()
+                    }
+                }
+            }
+        }
+        stage('Deploy to AKS') {
+            steps {
+                script {
+                    kubernetesDeploy(
+                        configs: 'k8s/deployment.yaml',
+                        kubeConfig: [path: '/var/lib/jenkins/.kube/config']
+                    )
+                }
+            }
+        }
+    }
+}
+
